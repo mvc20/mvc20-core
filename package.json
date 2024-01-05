@@ -1,10 +1,10 @@
 {
-  "name": "token-core",
+  "name": "mvc20-core",
   "version": "0.1.0",
-  "description": "token core contract in MVC",
+  "description": "mvc20 core contract in MVC",
   "main": "",
   "engines": {
-    "node": ">=12.0.0"
+    "node": ">=16.14.2"
   },
   "scripts": {
     "test": "mocha -r ts-node/register tests/*scrypttest.*  --reporter spec --timeout 600000",
