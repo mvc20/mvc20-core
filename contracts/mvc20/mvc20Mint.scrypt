@@ -71,8 +71,6 @@ contract Mvc20Mint {
         bytes genesisOutputScript = TokenProto.getNewGenesisScript(genesisScript, genesisScriptLen, genesisTxid);
         require(this.mvc20GenesisHash == hash160(genesisOutputScript));
 
-        require(len(prevouts) <= MAX_PREVOUTS_LEN);
-
         // updated minted info
         Mvc20Info info = Mvc20Proto.getMvc20Info(mvc20Script);
         int tokenAmount = info.maxTokenAmount / info.maxMintAmount;
