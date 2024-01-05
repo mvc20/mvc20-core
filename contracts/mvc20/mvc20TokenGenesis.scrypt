@@ -34,8 +34,8 @@ contract Mvc20TokenGenesis {
         bytes prevTxOutputHashProof,
         bytes prevTxOutputSatoshiBytes,
         // deposit
-        TxOutputProof depositTxProof,
-        bytes depositTxScript,
+        TxOutputProof mintTxProof,
+        bytes mintTxScript,
         // mvc20
         TxOutputProof mvc20TxProof,
         bytes mvc20TxScript,
@@ -51,8 +51,8 @@ contract Mvc20TokenGenesis {
 
         // verify mvc20AddLiquidity input
         bytes depositOutpoint = prevouts[: TxUtil.OUTPOINT_LEN];
-        require(sha256(depositTxScript) == depositTxProof.scriptHash);
-        TxUtil.verifyTxOutput(depositTxProof, depositOutpoint);
+        require(sha256(mintTxScript) == mintTxProof.scriptHash);
+        TxUtil.verifyTxOutput(mintTxProof, depositOutpoint);
 
         // verify mvc20 input
         bytes mvc20Outpoint = prevouts[mvc20InputIndex * TxUtil.OUTPOINT_LEN : (mvc20InputIndex + 1) * TxUtil.OUTPOINT_LEN];
@@ -63,7 +63,7 @@ contract Mvc20TokenGenesis {
         // verify the index of deposit contract hash
         bytes mainContractHashRoot = Mvc20Proto.getContractHashRoot(mvc20TxScript, len(mvc20TxScript));
         require(mainContractHashRoot == hash160(mainContractHashProof));
-        bytes depositCodeHash = hash160(ProtoHeader.getScriptCode(depositTxScript, len(depositTxScript)));
+        bytes depositCodeHash = hash160(ProtoHeader.getScriptCode(mintTxScript, len(mintTxScript)));
         require(depositCodeHash == mainContractHashProof[Mvc20Proto.OP_MINT * ProtoHeader.HASH_LEN: (Mvc20Proto.OP_MINT + 1) * ProtoHeader.HASH_LEN]);
 
         bytes genesisTxid = TokenProto.getGenesisTxid(genesisScript, genesisScriptLen);

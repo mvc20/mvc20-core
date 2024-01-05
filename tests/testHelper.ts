@@ -6,7 +6,7 @@ import { inputSatoshis, dummyTxId } from '../scrypt_helper'
 import { privateKey } from '../privateKey'
 
 //const TxUtil = Common.genContract('txUtil', false, false)
-const jsonDescr = Common.loadDescription('./fixture/autoGen/token_desc.json');
+const jsonDescr = Common.loadDescription('../out/token_debug_desc.json');
 export const { TxInputProof, TxOutputProof } = buildTypeClasses(jsonDescr);
 const addInput = Common.addInput
 const address1 = privateKey.toAddress()
