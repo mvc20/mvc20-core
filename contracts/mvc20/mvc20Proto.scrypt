@@ -1,0 +1,68 @@
+import "../uniqueProto.scrypt";
+
+struct Mvc20Info {
+    int maxTokenAmount;
+    int maxMintAmount;
+    int mintedAmount;
+}
+
+library Mvc20Proto {
+    static const int OP_MINT = 0;
+
+    // opreturn: <maxTokenAmount(8 bytes)> + <maxMintAmount(8 bytes)> + <mintedAmount(8 bytes)> +  + <contractHashRoot<20 bytes>>
+
+    static const int OP_PUSH_DATA_LEN = 2;
+
+    static const int CONTRACT_HASH_ROOT_OFFSET = UniqueProto.FIX_HEADER_LEN + ProtoHeader.HASH_LEN;
+    static const int MINTED_AMOUNT_OFFSET = CONTRACT_HASH_ROOT_OFFSET + ProtoHeader.AMOUNT_LEN;
+    static const int MAX_MINT_AMOUNT_OFFSET = MINTED_AMOUNT_OFFSET + ProtoHeader.AMOUNT_LEN;
+    static const int MAX_TOKEN_AMOUNT_OFFSET = MAX_MINT_AMOUNT_OFFSET + ProtoHeader.AMOUNT_LEN;
+
+    static const int DATA_OFFSET = MAX_TOKEN_AMOUNT_OFFSET + OP_PUSH_DATA_LEN;
+
+    static function getMaxTokenAmount(bytes script): int {
+        int slen = len(script);
+        return Utils.fromLEUnsigned(script[slen - MAX_TOKEN_AMOUNT_OFFSET: slen - MAX_TOKEN_AMOUNT_OFFSET + ProtoHeader.AMOUNT_LEN]);
+    }
+
+    static function getMaxMintAmount(bytes script): int {
+        int slen = len(script);
+        return Utils.fromLEUnsigned(script[slen - MAX_MINT_AMOUNT_OFFSET: slen - MAX_MINT_AMOUNT_OFFSET + ProtoHeader.AMOUNT_LEN]);
+    }
+
+    static function getMintedAmount(bytes script): int {
+        int slen = len(script);
+        return Utils.fromLEUnsigned(script[slen - MINTED_AMOUNT_OFFSET: slen - MINTED_AMOUNT_OFFSET + ProtoHeader.AMOUNT_LEN]);
+    }
+
+    static function getContractHashRoot(bytes script, int slen): bytes {
+        return script[slen - CONTRACT_HASH_ROOT_OFFSET: slen - CONTRACT_HASH_ROOT_OFFSET + ProtoHeader.HASH_LEN];
+    }
+
+    static function getMvc20Info(bytes script): Mvc20Info {
+        Mvc20Info info = {0, 0, 0};
+        info.maxTokenAmount = getMaxTokenAmount(script);
+        info.maxMintAmount = getMaxMintAmount(script);
+        info.mintedAmount = getMintedAmount(script);
+
+        return info;
+    }
+
+    static function getNewScript(bytes script, int mintedAmount): bytes {
+        int slen = len(script);
+        return script[: slen - MINTED_AMOUNT_OFFSET] + Utils.toLEUnsigned(mintedAmount, ProtoHeader.AMOUNT_LEN) + script[slen - MINTED_AMOUNT_OFFSET + ProtoHeader.AMOUNT_LEN:];
+    }
+
+    static function getNewScriptWithCustomData(bytes script, int slen, bytes customData) : bytes {
+        return script[: slen - MAX_TOKEN_AMOUNT_OFFSET] + customData + script[slen - UniqueProto.CUSTOM_DATA_SIZE_OFFSET :];
+    }
+
+    static function getScriptCode(bytes script, int slen) : bytes {
+        return script[: slen - DATA_OFFSET];
+    }
+
+    static function getScriptCodeHash(bytes script, int slen) : bytes {
+        bytes code = getScriptCode(script, slen);
+        return hash160(code);
+    }
+}

@@ -1,0 +1,92 @@
+import "../txUtil.scrypt";
+import "../backtrace.scrypt";
+import "../token/tokenProto.scrypt";
+import "mvc20Proto.scrypt";
+
+/**
+ * Mvc20TokenGenesis constract
+ * @constructor
+ * @param mvc20ScriptCodeHash {bytes} mvc20Main contract code hash
+*/
+contract Mvc20TokenGenesis {
+    bytes mvc20ScriptCodeHash;
+
+    static const int deposituidityHashIndex = 1;
+    static const int mvc20InputIndex = 1;
+
+    //static const int deposituidityInputIndex = 0;
+    /**
+    * @function unlock
+    * @param txPreimage {SigHashPreimage} preimage
+    * @param prevouts {bytes} previous outputs
+    * @param deposituidityTx {bytes} the raw tx which generate the deposituidityTx contract utxo
+    * @param genesisSatoshis {int} the mvc20LpGenesis contract output satoshis
+    */
+    public function unlock(SigHashPreimage txPreimage,
+        bytes prevouts,
+        // genesis
+        bytes genesisTxHeader,
+        // prev genesis input hash data
+        int prevInputIndex,
+        TxInputProof genesisTxInputProof,
+        // prev genesis tx output data
+        bytes prevGenesisTxHeader,
+        bytes prevTxOutputHashProof,
+        bytes prevTxOutputSatoshiBytes,
+        // deposit
+        TxOutputProof depositTxProof,
+        bytes depositTxScript,
+        // mvc20
+        TxOutputProof mvc20TxProof,
+        bytes mvc20TxScript,
+        // contract hash proof
+        bytes mainContractHashProof,
+        int genesisSatoshis) {
+
+        // check prevouts
+        require(hash256(prevouts) == SigHash.hashPrevouts(txPreimage));
+
+        bytes genesisScript = SigHash.scriptCode(txPreimage);
+        int genesisScriptLen = len(genesisScript);
+
+        // verify mvc20AddLiquidity input
+        bytes depositOutpoint = prevouts[: TxUtil.OUTPOINT_LEN];
+        require(sha256(depositTxScript) == depositTxProof.scriptHash);
+        TxUtil.verifyTxOutput(depositTxProof, depositOutpoint);
+
+        // verify mvc20 input
+        bytes mvc20Outpoint = prevouts[mvc20InputIndex * TxUtil.OUTPOINT_LEN : (mvc20InputIndex + 1) * TxUtil.OUTPOINT_LEN];
+        require(sha256(mvc20TxScript) == mvc20TxProof.scriptHash);
+        TxUtil.verifyTxOutput(mvc20TxProof, mvc20Outpoint);
+        require(this.mvc20ScriptCodeHash == Mvc20Proto.getScriptCodeHash(mvc20TxScript, len(mvc20TxScript)));
+
+        // verify the index of deposit contract hash
+        bytes mainContractHashRoot = Mvc20Proto.getContractHashRoot(mvc20TxScript, len(mvc20TxScript));
+        require(mainContractHashRoot == hash160(mainContractHashProof));
+        bytes depositCodeHash = hash160(ProtoHeader.getScriptCode(depositTxScript, len(depositTxScript)));
+        require(depositCodeHash == mainContractHashProof[Mvc20Proto.OP_MINT * ProtoHeader.HASH_LEN: (Mvc20Proto.OP_MINT + 1) * ProtoHeader.HASH_LEN]);
+
+        bytes genesisTxid = TokenProto.getGenesisTxid(genesisScript, genesisScriptLen);
+        bool isFirst = false;
+        if (genesisTxid == ProtoHeader.NULL_GENESIS_TXID) {
+            isFirst = true;
+            genesisTxid = SigHash.outpoint(txPreimage);
+        }
+
+        bytes newGenesisScript = TokenProto.getNewGenesisScript(genesisScript, genesisScriptLen, genesisTxid);
+
+        if (!isFirst) {
+            // backtrace to genesis script
+            bytes thisOutpoint = SigHash.outpoint(txPreimage);
+            bytes prevScriptHash = sha256(genesisScript);
+            TxOutputProof prevGenesisTxProof = {prevGenesisTxHeader, prevTxOutputHashProof, prevTxOutputSatoshiBytes, prevScriptHash};
+            Backtrace.verify(thisOutpoint, genesisTxHeader, prevInputIndex, prevGenesisTxProof, genesisTxid, genesisTxInputProof);
+        }
+        require(TokenProto.checkProtoHeader(genesisScript, genesisScriptLen));
+
+        bytes genesisOutput = Utils.buildOutput(newGenesisScript, genesisSatoshis);
+        require(hash256(genesisOutput) == SigHash.hashOutputs(txPreimage));
+
+        require(Tx.checkPreimageSigHashType(txPreimage, ProtoHeader.SIG_HASH_SINGLE));
+    }
+}

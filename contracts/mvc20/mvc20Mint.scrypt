@@ -1,0 +1,109 @@
+import "../txUtil.scrypt";
+import "mvc20Proto.scrypt";
+import "../uniqueProto.scrypt";
+import "../token/tokenProto.scrypt";
+import "../common.scrypt";
+
+// opreturn: senderAddress + lockTokenHolderHash + data_len
+contract Mvc20Mint {
+    bytes mvc20ID;
+    bytes mvc20ScriptCodeHash;
+    bytes tokenScriptCodeHash;
+    bytes mvc20GenesisHash;
+    int burnSats;
+
+    // max input num 4 * 36
+    static const int MAX_PREVOUTS_LEN = 144;
+
+    static const int mvc20InputIndex = 1;
+    static const int mvc20GenesisInputIndex = 2;
+    static const int mvc20TokenInputIndex = 3;
+
+    public function unlock(
+        SigHashPreimage txPreimage,
+        bytes prevouts,
+        // mvc20 tx proof
+        bytes mvc20Script,
+        TxOutputProof mvc20TxProof,
+        // mvc20 Genesis
+        bytes genesisScript,
+        TxOutputProof tokenGenesisTxProof,
+        // token
+        bytes tokenScript,
+        // output
+        int mvc20OutputSatoshis,
+        int tokenOutputSatoshis,
+        int genesisOutputSatoshis,
+        Ripemd160 changeAddress,
+        int changeSatoshis) {
+
+        // check prevouts
+        require(hash256(prevouts) == SigHash.hashPrevouts(txPreimage));
+        require(len(prevouts) <= MAX_PREVOUTS_LEN);
+
+        // getDataPart
+        bytes lockingScript = SigHash.scriptCode(txPreimage);
+        int scriptLen = len(lockingScript);
+        bytes senderAddress = lockingScript[scriptLen - 25 : scriptLen - 5];
+
+        int tokenScriptLen = len(tokenScript);
+        require(this.tokenScriptCodeHash == TokenProto.getScriptCodeHash(tokenScript, tokenScriptLen));
+
+        // verify mvc20 input
+        Common.verifyContractInput(prevouts, mvc20InputIndex, mvc20TxProof, mvc20Script);
+
+        int mvc20ScriptLen = len(mvc20Script);
+        require(this.mvc20ID == UniqueProto.getUniqueID(mvc20Script, mvc20ScriptLen));
+        require(this.mvc20ScriptCodeHash == Mvc20Proto.getScriptCodeHash(mvc20Script, mvc20ScriptLen));
+
+        // verify genesis input
+        bytes genesisOutpoint = prevouts[mvc20GenesisInputIndex * TxUtil.OUTPOINT_LEN: (mvc20GenesisInputIndex + 1) * TxUtil.OUTPOINT_LEN];
+        TxOutputProof genesisProof = {tokenGenesisTxProof.txHeader, tokenGenesisTxProof.hashProof, tokenGenesisTxProof.satoshiBytes, sha256(genesisScript)};
+        TxUtil.verifyTxOutput(genesisProof, genesisOutpoint);
+
+        // update genesisTxid
+        int genesisScriptLen = len(genesisScript);
+        bytes genesisTxid = TokenProto.getGenesisTxid(genesisScript, genesisScriptLen);
+        if (genesisTxid == ProtoHeader.NULL_GENESIS_TXID) {
+            genesisTxid = genesisOutpoint;
+        }
+
+        bytes genesisOutputScript = TokenProto.getNewGenesisScript(genesisScript, genesisScriptLen, genesisTxid);
+        require(this.mvc20GenesisHash == hash160(genesisOutputScript));
+
+        require(len(prevouts) <= MAX_PREVOUTS_LEN);
+
+        // updated minted info
+        Mvc20Info info = Mvc20Proto.getMvc20Info(mvc20Script);
+        int tokenAmount = info.maxTokenAmount / info.maxMintAmount;
+        int mintedAmount = info.mintedAmount + 1;
+        require(mintedAmount <= info.maxMintAmount);
+        require(info.maxTokenAmount % info.maxMintAmount == 0);
+
+        // mvc20 output
+        bytes newMvc20Script = Mvc20Proto.getNewScript(mvc20Script, mintedAmount);
+        bytes mvc20Output = Utils.buildOutput(newMvc20Script, mvc20OutputSatoshis);
+
+        // genesis output
+        bytes newGenesisOutput = Utils.buildOutput(genesisOutputScript, genesisOutputSatoshis);
+
+        // mvc20 token output
+        bytes mvc20TokenScript = TokenProto.getScriptCode(tokenScript, tokenScriptLen) + TokenProto.getScriptData(genesisOutputScript, len(genesisOutputScript));
+
+        bytes newMvc20TokenScript = TokenProto.getNewTokenScriptFromGenesisData(mvc20TokenScript, tokenScriptLen, senderAddress, tokenAmount, this.mvc20GenesisHash);
+        bytes mvc20TokenOutput = Utils.buildOutput(newMvc20TokenScript, tokenOutputSatoshis);
+
+        bytes changeOutput = TxUtil.genMvcOutput(changeSatoshis, changeAddress);
+
+        bytes burnOutput = b'';
+        if (this.burnSats > 0) {
+            burnOutput = TxUtil.genMvcOutput(this.burnSats, Ripemd160(ProtoHeader.NULL_ADDRESS));
+        }
+
+        bytes outputs = mvc20Output + mvc20TokenOutput + newGenesisOutput + burnOutput + changeOutput;
+
+        require(hash256(outputs) == SigHash.hashOutputs(txPreimage));
+
+        require(Tx.checkPreimageOCS(txPreimage));
+    }
+}
