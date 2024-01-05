@@ -94,8 +94,8 @@ function initContractHash() {
         Buffer.from(mvc20TokenSensibleID, 'hex')
     ])).toString('hex')
 
-    const mvc20Deposit = new Mvc20Mint(new Bytes(mvc20ID), new Bytes(mvc20MainCodeHash), new Bytes(tokenCodeHash), new Bytes(mvc20GenesisHash), burnSats)
-    mvc20MintCodeHash = getCodeHash(mvc20Deposit.lockingScript.toBuffer()).toString('hex')
+    const mvc20Mint = new Mvc20Mint(new Bytes(mvc20ID), new Bytes(mvc20MainCodeHash), new Bytes(tokenCodeHash), new Bytes(mvc20GenesisHash), burnSats)
+    mvc20MintCodeHash = getCodeHash(mvc20Mint.lockingScript.toBuffer()).toString('hex')
 
     // create merkle tree
     contractHashArray = Buffer.concat([
@@ -291,13 +291,13 @@ function createContractTx(lockingScript) {
 }
 
 function createMvc20MintContract(senderAddress: mvc.Address) {
-    const mvc20Deposit = new Mvc20Mint(new Bytes(mvc20ID), new Bytes(mvc20MainCodeHash), new Bytes(tokenCodeHash), new Bytes(mvc20GenesisHash), burnSats)
+    const mvc20Mint = new Mvc20Mint(new Bytes(mvc20ID), new Bytes(mvc20MainCodeHash), new Bytes(tokenCodeHash), new Bytes(mvc20GenesisHash), burnSats)
     const data = Common.buildScriptData(Buffer.concat([
         senderAddress.hashBuffer,
     ]))
-    mvc20Deposit.setDataPart(data.toString('hex'))
-    const tx = createContractTx(mvc20Deposit.lockingScript)
-    return [mvc20Deposit, tx]
+    mvc20Mint.setDataPart(data.toString('hex'))
+    const tx = createContractTx(mvc20Mint.lockingScript)
+    return [mvc20Mint, tx]
 }
 
 function unlockMvc20Mint( 
@@ -404,7 +404,7 @@ function mint(info: Mvc20Proto.Mvc20Info, options: any = {}) {
     let prevouts = []
     const senderAddress = address1
     // input
-    // mvc20Deposit
+    // mvc20Mint
     const [mintContract, mintTx] = createMvc20MintContract(senderAddress)
     addInput(tx, mintTx.id, 0, mintContract.lockingScript, mintTx.outputs[0].satoshis, prevouts)
 
