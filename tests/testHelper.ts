@@ -1,13 +1,9 @@
 
-import { expect } from 'chai';
-import { mvc, getPreimage, toHex, SigHashPreimage, signTx, PubKey, Sig, Bytes, Ripemd160, buildTypeClasses } from 'mvc-scrypt'
-import Common = require('../../deployments/common')
-import UniqueProto = require('../../deployments/uniqueProto')
-import { inputSatoshis, dummyTxId } from '../../scrypt_helper'
+import { mvc, buildTypeClasses } from 'mvc-scrypt'
+import Common = require('../deployments/common')
+import { inputSatoshis, dummyTxId } from '../scrypt_helper'
 
-import { privateKey } from '../../privateKey'
-
-const sigtype = Common.SIG_HASH_ALL
+import { privateKey } from '../privateKey'
 
 //const TxUtil = Common.genContract('txUtil', false, false)
 const jsonDescr = Common.loadDescription('./fixture/autoGen/token_desc.json');

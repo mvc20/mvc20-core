@@ -1,18 +1,19 @@
 {
 	"compilerOptions": {
-		"target": "es2020",
+		"target": "es6",
 		"module": "commonjs",
 		"moduleResolution": "node",
 		"sourceMap": true,
 		"alwaysStrict": true,
 		"strictNullChecks": true,
+		"esModuleInterop": false,
 		"outDir": "out",
 		"rootDir": "./",
 		"lib": [
       "es2020"
     ]
 	},
-	"include": ["tests/**/*.ts", "deployments/*.ts", "tests/ts/*.ts"],
+	"include": ["tests/*.ts", "deployments/*.ts", "tests/mvc20Main.scrypttest.ts", "tests/testHelper.ts"],
 	"exclude": ["node_modules"]
 }
 

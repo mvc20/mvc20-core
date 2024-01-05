@@ -1,16 +1,16 @@
 import { expect } from 'chai';
 import { mvc, Bytes, getPreimage, toHex, Ripemd160, SigHashPreimage, PubKey, Sig, signTx, buildTypeClasses } from 'mvc-scrypt'
-import Mvc20Proto  = require('../../deployments/mvc20Proto')
-import { dummyTxId } from '../../scrypt_helper'
+import Mvc20Proto  = require('../deployments/mvc20Proto')
+import { dummyTxId } from '../scrypt_helper'
 
-import { privateKey, privateKey2, privateKey3 } from '../../privateKey';
+import { privateKey, privateKey2, privateKey3 } from '../privateKey';
 
-import Proto = require('../../deployments/protoheader')
-import TokenProto = require('../../deployments/tokenProto')
-import Common = require('../../deployments/common')
-import UniqueProto = require('../../deployments/uniqueProto')
+import Proto = require('../deployments/protoheader')
+import TokenProto = require('../deployments/tokenProto')
+import Common = require('../deployments/common')
+import UniqueProto = require('../deployments/uniqueProto')
 import { createInputTx, getTxOutputProofScrypt, getEmptyTxOutputProofScrypt } from './testHelper';
-import { inputSatoshis } from '../../scrypt_helper'
+import { inputSatoshis } from '../scrypt_helper'
 
 const tokenType = Common.getUInt32Buf(TokenProto.PROTO_TYPE)
 const tokenVersion = Common.getUInt32Buf(TokenProto.PROTO_VERSION)
@@ -40,9 +40,9 @@ const burnSats = 100000
 const Mvc20Main = genContract('mvc20/mvc20Main', USE_DESC, USE_RELEASE)
 const Mvc20Genesis = genContract('mvc20/mvc20TokenGenesis', USE_DESC, USE_RELEASE)
 const Mvc20Mint = genContract('mvc20/mvc20Mint', USE_DESC, USE_RELEASE)
-const Token = genContract('token/token', USE_DESC, USE_RELEASE)
+const Token = genContract('token/token', true, false)
 
-const jsonDescr = Common.loadDescription('../out/mvc20Mint_release_desc.json');
+const jsonDescr = Common.loadDescription('../out/token_debug_desc.json');
 export const { TxInputProof, TxOutputProof, BlockRabinData } = buildTypeClasses(jsonDescr);
 
 let mvc20SensibleID, mvc20TokenSensibleID, tokenCodeHash 
@@ -427,7 +427,7 @@ function mint(info: Mvc20Proto.Mvc20Info, options: any = {}) {
 
     const prevoutsBuf = Buffer.concat(prevouts)
 
-    const newMintedAmount = info.mintedAmount + 1n
+    const newMintedAmount = info.mintedAmount + BigInt(1)
     const newTokenAmount = info.maxTokenAmount / info.maxMintAmount
 
     // mvc20Main
@@ -475,9 +475,9 @@ describe('Test mvc20 contract unlock In Javascript', () => {
 
     beforeEach(() => {
         mvc20Info = {
-            maxTokenAmount: 10000000n,
-            maxMintAmount: 1000n,
-            mintedAmount: 0n,
+            maxTokenAmount: BigInt(10000000),
+            maxMintAmount: BigInt(1000),
+            mintedAmount: BigInt(0),
         }
     })
 
@@ -487,9 +487,9 @@ describe('Test mvc20 contract unlock In Javascript', () => {
 
     it('d2: should failed when mint overpass max minted amount', () => {
         mvc20Info = {
-            maxTokenAmount: 10000000n,
-            maxMintAmount: 1000n,
-            mintedAmount: 10000n,
+            maxTokenAmount: BigInt(10000000),
+            maxMintAmount: BigInt(1000),
+            mintedAmount: BigInt(10000),
         }
         mint(mvc20Info,  {expected: false})
     })
